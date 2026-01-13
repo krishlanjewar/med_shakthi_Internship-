@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:med_shakthi/src/features/cart/presentation/screens/cart_page.dart';
 import 'package:med_shakthi/src/features/products/presentation/screens/product_page.dart';
+import 'package:med_shakthi/src/features/profile/presentation/screens/profile_screen.dart';
+import '../orders/order_screen.dart';
+import '../products/data/models/product_model.dart';
 
 /// This screen implements the "med Shakti home page "
 class PharmacyHomeScreen extends StatefulWidget {
@@ -32,7 +35,7 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
               _buildSectionTitle(
                 "Categories",
                 "See All",
-                () {},
+                    () {},
               ), // categories Title
               const SizedBox(height: 16),
               _buildCategoriesList(), // Categories List
@@ -40,7 +43,7 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
               _buildSectionTitle(
                 "Bestseller Products",
                 "See All",
-                () {},
+                    () {},
               ), // Bestseller Products Title
               const SizedBox(height: 16),
               _buildBestsellersList(), // Bestsellers List
@@ -94,7 +97,7 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
         // Cart Button with Badge
         Stack(
           clipBehavior:
-              Clip.none, // Allows elements to go outside the stack bounds
+          Clip.none, // Allows elements to go outside the stack bounds
           children: [
             _buildIconBox(Icons.shopping_cart_outlined, () {
               Navigator.push(
@@ -274,10 +277,10 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
 
   /// Reusable section title with "See All" button
   Widget _buildSectionTitle(
-    String title,
-    String actionText,
-    VoidCallback onAction,
-  ) {
+      String title,
+      String actionText,
+      VoidCallback onAction,
+      ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -352,7 +355,7 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
         scrollDirection: Axis.horizontal, // Horizontal scrolling
         itemCount: categories.length,
         separatorBuilder: (_, _) =>
-            const SizedBox(width: 20), // Spacing between items
+        const SizedBox(width: 20), // Spacing between items
         itemBuilder: (context, index) {
           final cat = categories[index];
           return Column(
@@ -377,7 +380,7 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
                   child: Icon(
                     cat['icon'] as IconData,
                     color:
-                        (cat['color'] as Color?)?.withValues(alpha: 1.0) ??
+                    (cat['color'] as Color?)?.withValues(alpha: 1.0) ??
                         Colors.blue, // Using the color for the icon
                     size: 28,
                   ),
@@ -401,19 +404,80 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
 
   /// Builds the horizontal list of product cards
   Widget _buildBestsellersList() {
+
+    final List<Product> products = [
+      Product(
+        id: '1',
+        name: 'Milk Thistle Liver Care',
+        category: 'Supplements',
+        price: 16.99,
+        rating: 4.8,
+        image: 'https://pngimg.com/uploads/pills/pills_PNG98765.png',
+      ),
+      Product(
+        id: '2',
+        name: 'Puregen Cold Relief',
+        category: 'Medicine',
+        price: 12.49,
+        rating: 4.6,
+        image: 'https://pngimg.com/uploads/vitamin_bottle/vitamin_bottle_PNG9.png',
+      ),
+      Product(
+        id: '3',
+        name: 'Vitamin C Tablets',
+        category: 'Vitamins',
+        price: 9.99,
+        rating: 4.5,
+        image: 'https://pngimg.com/uploads/vitamin/vitamin_PNG13.png',
+      ),
+      Product(
+        id: '4',
+        name: 'Pain Relief Gel',
+        category: 'Healthcare',
+        price: 7.99,
+        rating: 4.4,
+        image: 'https://pngimg.com/uploads/cream/cream_PNG9.png',
+      ),
+      Product(
+        id: '5',
+        name: 'Omega 3 Fish Oil',
+        category: 'Supplements',
+        price: 19.99,
+        rating: 4.7,
+        image: 'https://pngimg.com/uploads/pills/pills_PNG98765.png',
+      ),
+      Product(
+        id: '6',
+        name: 'Diabetes Care Capsules',
+        category: 'Medicine',
+        price: 18.50,
+        rating: 4.6,
+        image: 'https://pngimg.com/uploads/vitamin_bottle/vitamin_bottle_PNG9.png',
+      ),
+      Product(
+        id: '7',
+        name: 'Skin Care Tablets',
+        category: 'Beauty',
+        price: 14.25,
+        rating: 4.3,
+        image: 'https://pngimg.com/uploads/vitamin/vitamin_PNG13.png',
+      ),
+    ];
+
     return SizedBox(
       height: 260, // Height enough to fit image + text + price
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none, // Allow shadow to flow outside
-        itemCount: 7,
+        itemCount: products.length,
         itemBuilder: (context, index) {
-          // Alternatig dummy data
-          final bool isMilkThistle = index % 2 == 0;
+
+          final product = products[index];
+
           return GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ProductPage()),
+              MaterialPageRoute(builder: (_) =>  ProductPage(product: product)),
             ),
             child: Container(
               width: 160,
@@ -437,17 +501,12 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
                   Expanded(
                     child: Center(
                       child: Image.network(
-                        isMilkThistle
-                            ? 'https://pngimg.com/uploads/pills/pills_PNG98765.png' // Dummy pill bottle
-                            : 'https://pngimg.com/uploads/vitamin_bottle/vitamin_bottle_PNG9.png',
+                        product.image,
                         fit: BoxFit.contain,
                         errorBuilder: (c, e, s) => Container(
                           color: Colors.grey[100],
                           child: const Center(
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: Colors.grey,
-                            ),
+                            child: Icon(Icons.image_not_supported),
                           ),
                         ),
                       ),
@@ -456,21 +515,18 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
                   const SizedBox(height: 12),
                   // Title
                   Text(
-                    isMilkThistle
-                        ? "Milk Thistle Liver Care"
-                        : "Puregen Cold Relief",
+                    product.name,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
-                      color: Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
                   // Subtitle / Category
                   Text(
-                    isMilkThistle ? "Supplements" : "Medicine",
+                    product.category,
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   const SizedBox(height: 8),
@@ -556,8 +612,29 @@ class _PharmacyHomeScreenState extends State<PharmacyHomeScreen> {
 
   Widget _buildNavItem(IconData icon, String label, int index) {
     final isSelected = _selectedIndex == index;
+
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () {
+        if (index == 4) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AccountPage(), // Ensure this widget name matches your class
+            ),
+          );
+        } else if (index == 3) {
+          // --- NAVIGATION TO ORDER SCREEN ---
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const OrderScreen(), // Ensure OrderScreen is imported
+            ),
+          );
+        } else {
+          // For other buttons, just update the UI selection
+          setState(() => _selectedIndex = index);
+        }
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

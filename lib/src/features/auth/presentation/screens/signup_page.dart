@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:med_shakthi/src/features/products/presentation/screens/pharmacy_home_screen.dart';
+import 'package:med_shakthi/src/features/dashboard/pharmacy_home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -10,6 +11,8 @@ class SignupPage extends StatefulWidget {
 
 class _SignupPageState extends State<SignupPage> {
   final _formKey = GlobalKey<FormState>();
+  final SupabaseClient supabase = Supabase.instance.client;
+
 
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -241,7 +244,7 @@ class _SignupPageState extends State<SignupPage> {
     );
   }
 
-  void _onSignupPressed() {
+  Future<void> _onSignupPressed() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!_acceptTerms) {
@@ -254,15 +257,57 @@ class _SignupPageState extends State<SignupPage> {
       return;
     }
 
-    // TODO: Signup logic
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const PharmacyHomeScreen()),
-    );
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Signup successful!')));
+    try {
+      // 🔐 Step 1: Supabase Auth Signup
+      final authResponse = await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      final user = authResponse.user;
+      if (user == null) {
+        throw Exception('Signup failed. Try again.');
+      }
+
+      // 🧾 Step 2: Insert into users table
+      await supabase.from('users').insert({
+        'id': user.id, // MUST match auth.users.id
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'created_at': DateTime.now().toIso8601String(),
+      });
+
+      // ✅ Success
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Signup successful!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // ➡️ Navigate
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const PharmacyHomeScreen()),
+      );
+    } on AuthException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
+
 
   Widget _label(String text) {
     return Padding(

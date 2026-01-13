@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:med_shakthi/src/features/products/presentation/screens/pharmacy_home_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:med_shakthi/src/features/dashboard/pharmacy_home_screen.dart';
 import 'package:med_shakthi/src/features/auth/presentation/screens/supplier_signup_page.dart';
 import 'package:med_shakthi/src/features/auth/presentation/screens/signup_page.dart';
+// Assuming SupplierDashboard is located here based on your project structure
+import 'package:med_shakthi/src/features/dashboard/supplier_dashboard.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -13,16 +16,82 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
 
+  // Supabase Client
+  final SupabaseClient supabase = Supabase.instance.client;
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _onLoginPressed() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // 🔐 Supabase Login Logic
+      final AuthResponse res = await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (res.user != null) {
+        // 🔍 Check if the logged-in user is a supplier
+        final supplierData = await supabase
+            .from('suppliers')
+            .select()
+            .eq('user_id', res.user!.id)
+            .maybeSingle();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Login successful'), backgroundColor: Colors.green),
+        );
+
+        // 🔀 Navigation Logic
+        if (supplierData != null) {
+          // Navigate to Supplier Dashboard
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (BuildContext context) => const SupplierDashboard(),
+            ),
+                (route) => false,
+          );
+        } else {
+          // Navigate to User/Pharmacy Home
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (BuildContext context) => const PharmacyHomeScreen(),
+            ),
+                (route) => false,
+          );
+        }
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: Colors.redAccent),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -47,8 +116,6 @@ class _LoginPageState extends State<LoginPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24),
-
-                  /// TITLE
                   const Center(
                     child: Text(
                       'Login',
@@ -58,10 +125,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
-                  /// LOGO (NO GREEN BACKGROUND)
                   Center(
                     child: Container(
                       height: 90,
@@ -71,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                         borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
+                            color: Colors.black.withOpacity(0.12),
                             blurRadius: 12,
                             offset: const Offset(0, 6),
                           ),
@@ -82,14 +146,13 @@ class _LoginPageState extends State<LoginPage> {
                         child: Image.asset(
                           'assets/images/logo.png',
                           fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.local_pharmacy, size: 40, color: Color(0xFF6AA39B)),
                         ),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 40),
-
-                  /// EMAIL
                   _label('Email'),
                   _textField(
                     controller: _emailController,
@@ -99,10 +162,7 @@ class _LoginPageState extends State<LoginPage> {
                         ? null
                         : 'Enter valid email',
                   ),
-
                   const SizedBox(height: 20),
-
-                  /// PASSWORD
                   _label('Password'),
                   _textField(
                     controller: _passwordController,
@@ -124,10 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                         ? null
                         : 'Minimum 6 characters',
                   ),
-
                   const SizedBox(height: 10),
-
-                  /// FORGOT PASSWORD
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -138,22 +195,26 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  /// LOGIN BUTTON
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _onLoginPressed,
+                      onPressed: _isLoading ? null : _onLoginPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF6AA39B),
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),
                         ),
                       ),
-                      child: const Text(
+                      child: _isLoading
+                          ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                      )
+                          : const Text(
                         'Login',
                         style: TextStyle(
                           fontSize: 16,
@@ -162,19 +223,14 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 30),
-
-                  /// SOCIAL LOGIN
                   const Center(
                     child: Text(
                       'Social Login',
                       style: TextStyle(color: Colors.grey),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -185,10 +241,7 @@ class _LoginPageState extends State<LoginPage> {
                       _socialIcon(Icons.apple, Colors.black),
                     ],
                   ),
-
                   const SizedBox(height: 40),
-
-                  /// REGISTER AS PHARMACY/USER
                   Center(
                     child: GestureDetector(
                       onTap: () {
@@ -220,10 +273,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  /// REGISTER AS SUPPLIER
                   Center(
                     child: GestureDetector(
                       onTap: () {
@@ -265,18 +315,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _onLoginPressed() {
-    // if (!_formKey.currentState!.validate()) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (BuildContext context) => const PharmacyHomeScreen(),
-      ),
-    );
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Login submitted')));
-  }
-
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -301,6 +339,7 @@ class _LoginPageState extends State<LoginPage> {
         hintText: hint,
         suffixIcon: suffixIcon,
         filled: true,
+        fillColor: Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(30),
           borderSide: BorderSide.none,
@@ -317,28 +356,10 @@ class _LoginPageState extends State<LoginPage> {
         shape: BoxShape.circle,
         color: Colors.white,
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
         ],
       ),
       child: Icon(icon, color: color, size: 30),
-    );
-  }
-
-  Widget _socialIconImage(String assetPath) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(10),
-        child: Image.asset(assetPath),
-      ),
     );
   }
 }

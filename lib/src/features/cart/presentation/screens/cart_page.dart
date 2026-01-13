@@ -1,103 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-// --- DATA MODEL ---
-class CartItem {
-  final String id;
-  final String title;
-  final String brand;
-  final String size;
-  final double price;
-  final String imagePath;
-  int quantity;
+// Imports from your snippet (Provider & Data)
+// Corrected paths based on your previous file structure
+import '../../../checkout/presentation/screens/AddressSelectScreen.dart';
+import '../../data/cart_data.dart';
+import '../../data/cart_item.dart';
 
-  CartItem({
-    required this.id,
-    required this.title,
-    required this.brand,
-    required this.size,
-    required this.price,
-    required this.imagePath,
-    this.quantity = 1,
-  });
-}
-
-// --- CART PAGE WIDGET ---
-class CartPage extends StatefulWidget {
+class CartPage extends StatelessWidget {
   const CartPage({super.key});
 
-  @override
-  State<CartPage> createState() => _CartPageState();
-}
-
-class _CartPageState extends State<CartPage> {
-  // Theme color (Teal/Green)
   final Color themeColor = const Color(0xFF4C8077);
-  // Background color
   final Color backgroundColor = const Color(0xFFF5F7F9);
 
-  // Dummy Data matched to your image
-  final List<CartItem> _cartItems = [
-    CartItem(
-      id: '1',
-      title: 'Dietary Antioxidant Protection',
-      brand: 'SAN Pharma',
-      size: 'Size: 120 count',
-      price: 18.99,
-      imagePath: 'assets/images/cart_image_1.jpg',
-      quantity: 1,
-    ),
-    CartItem(
-      id: '2',
-      title: 'Stress Management L-Theanine',
-      brand: '21st Century Store',
-      size: 'Size: 65 count',
-      price: 21.99,
-      imagePath: 'assets/images/cart_image_2.jpg',
-      quantity: 1,
-    ),
-    CartItem(
-      id: '3',
-      title: 'Non-Drowsy Cold & Flu Relief',
-      brand: 'Puregen Labs',
-      size: 'Size: 50 count',
-      price: 24.99,
-      imagePath: 'assets/images/cart_image_3.jpg',
-      quantity: 1,
-    ),
-  ];
-
-  // Calculations
-  double get subTotal => _cartItems.fold(
-      0, (total, item) => total + (item.price * item.quantity));
-
-// Hardcoded shipping
-  int get shipping => 10; // Now an integer
-
-  // Total remains a double because subTotal is a double
-  double get total => subTotal + shipping;
-
-  void _incrementQuantity(int index) {
-    setState(() {
-      _cartItems[index].quantity++;
-    });
-  }
-
-  void _decrementQuantity(int index) {
-    setState(() {
-      if (_cartItems[index].quantity > 1) {
-        _cartItems[index].quantity--;
-      }
-    });
-  }
-
-  void _removeItem(int index) {
-    setState(() {
-      _cartItems.removeAt(index);
-    });
-  }
+  // Hardcoded shipping cost
+  final int shipping = 10;
 
   @override
   Widget build(BuildContext context) {
+    // Listen to changes in CartData using Provider.of
+    final cart = Provider.of<CartData>(context);
+
+    // Calculate total for display
+    final double total = cart.subTotal + shipping;
+
     return Scaffold(
       backgroundColor: backgroundColor,
       body: SafeArea(
@@ -108,7 +34,7 @@ class _CartPageState extends State<CartPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10),
               child: Row(
                 children: [
-                  _buildIconButton(Icons.arrow_back, onTap: () {
+                  _buildIconButton(context, Icons.arrow_back, onTap: () {
                     if (Navigator.canPop(context)) {
                       Navigator.pop(context);
                     }
@@ -119,21 +45,39 @@ class _CartPageState extends State<CartPage> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
-                  _buildIconButton(Icons.delete_outline, onTap: () {}),
+                  // You can wire these up to Provider logic if needed
+                  _buildIconButton(context, Icons.delete_outline, onTap: () {
+                    // Example: cart.clearCart();
+                  }),
                   const SizedBox(width: 8),
-                  _buildIconButton(Icons.share_outlined, onTap: () {}),
+                  _buildIconButton(context, Icons.share_outlined, onTap: () {}),
                 ],
               ),
             ),
 
             // --- CART LIST ---
             Expanded(
-              child: ListView.separated(
+              child: cart.items.isEmpty
+                  ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.shopping_cart_outlined,
+                        size: 64, color: Colors.grey[400]),
+                    const SizedBox(height: 16),
+                    Text('Your cart is empty',
+                        style: TextStyle(color: Colors.grey[600])),
+                  ],
+                ),
+              )
+                  : ListView.separated(
                 padding: const EdgeInsets.all(20),
-                itemCount: _cartItems.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 20),
+                itemCount: cart.items.length,
+                separatorBuilder: (context, index) =>
+                const SizedBox(height: 20),
                 itemBuilder: (context, index) {
-                  return _buildCartItemCard(_cartItems[index], index);
+                  return _buildCartItemCard(
+                      context, cart, cart.items[index], index);
                 },
               ),
             ),
@@ -141,11 +85,10 @@ class _CartPageState extends State<CartPage> {
             // --- BOTTOM SUMMARY SECTION ---
             Container(
               padding: const EdgeInsets.all(24),
-              // REMOVED BoxDecoration: Now it is transparent and matches background
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildSummaryRow("Sub Total", subTotal),
+                  _buildSummaryRow("Sub Total", cart.subTotal),
                   const SizedBox(height: 12),
                   _buildSummaryRow("Shipping & Tax", shipping),
                   const SizedBox(height: 20),
@@ -183,7 +126,10 @@ class _CartPageState extends State<CartPage> {
                         ),
                         elevation: 0,
                       ),
-                      onPressed: () {},
+                      onPressed: () {
+                        if (cart.items.isEmpty) return;
+                        _showCheckoutConfirmDialog(context, cart);
+                      },
                       child: const Text(
                         "Checkout",
                         style: TextStyle(
@@ -204,7 +150,8 @@ class _CartPageState extends State<CartPage> {
 
   // --- HELPER WIDGETS ---
 
-  Widget _buildIconButton(IconData icon, {VoidCallback? onTap}) {
+  Widget _buildIconButton(BuildContext context, IconData icon,
+      {VoidCallback? onTap}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -215,7 +162,7 @@ class _CartPageState extends State<CartPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
+              color: Colors.grey.withOpacity(0.1),
               spreadRadius: 1,
               blurRadius: 3,
             )
@@ -238,7 +185,7 @@ class _CartPageState extends State<CartPage> {
           ),
         ),
         Text(
-         "\$${value is int ? value.toString() : value.toStringAsFixed(2)}",
+          "\$${value is int ? value.toString() : value.toStringAsFixed(2)}",
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -249,7 +196,12 @@ class _CartPageState extends State<CartPage> {
     );
   }
 
-  Widget _buildCartItemCard(CartItem item, int index) {
+  Widget _buildCartItemCard(
+      BuildContext context, CartData cart, CartItem item, int index) {
+
+    // Check if the image path is a URL (http/https) or a local asset
+    final bool isNetworkImage = item.imagePath?.startsWith('http') ?? false;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -257,7 +209,7 @@ class _CartPageState extends State<CartPage> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -273,11 +225,18 @@ class _CartPageState extends State<CartPage> {
             padding: const EdgeInsets.all(8),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.asset(
-                item.imagePath,
+              child: isNetworkImage
+                  ? Image.network(
+                item.imagePath!,
                 fit: BoxFit.contain,
-                errorBuilder: (c, o, s) =>
-                    const Icon(Icons.medication, size: 40, color: Colors.grey),
+                errorBuilder: (c, o, s) => const Icon(Icons.medication,
+                    size: 40, color: Colors.grey),
+              )
+                  : Image.asset(
+                item.imagePath ?? '',
+                fit: BoxFit.contain,
+                errorBuilder: (c, o, s) => const Icon(Icons.medication,
+                    size: 40, color: Colors.grey),
               ),
             ),
           ),
@@ -289,8 +248,9 @@ class _CartPageState extends State<CartPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Use fallback if title is null
                 Text(
-                  item.title,
+                  item.title ?? item.name,
                   style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -299,8 +259,9 @@ class _CartPageState extends State<CartPage> {
                   maxLines: 2,
                 ),
                 const SizedBox(height: 4),
+                // Use fallback if brand is null
                 Text(
-                  item.brand,
+                  item.brand ?? '',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -313,8 +274,9 @@ class _CartPageState extends State<CartPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
+                    // Use fallback if size is null
                     Text(
-                      item.size,
+                      item.size ?? '',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey[500],
@@ -340,7 +302,7 @@ class _CartPageState extends State<CartPage> {
                     Row(
                       children: [
                         _buildQuantityBtn(
-                            Icons.remove, () => _decrementQuantity(index)),
+                            Icons.remove, () => cart.decrement(index)),
                         SizedBox(
                           width: 30,
                           child: Center(
@@ -352,13 +314,13 @@ class _CartPageState extends State<CartPage> {
                           ),
                         ),
                         _buildQuantityBtn(
-                            Icons.add, () => _incrementQuantity(index)),
+                            Icons.add, () => cart.increment(index)),
                       ],
                     ),
-                    
+
                     // Trash Icon
                     GestureDetector(
-                      onTap: () => _removeItem(index),
+                      onTap: () => cart.remove(index),
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
@@ -389,6 +351,103 @@ class _CartPageState extends State<CartPage> {
           border: Border.all(color: Colors.grey.shade300),
         ),
         child: Icon(icon, size: 16, color: Colors.grey[600]),
+      ),
+    );
+  }
+
+  void _showCheckoutConfirmDialog(BuildContext context, CartData cart) {
+    // Explicitly casting quantity to int to avoid type errors
+    final int totalItems =
+    cart.items.fold(0, (sum, item) => sum + item.quantity.toInt());
+
+    // Calculate final total based on live data
+    final double total = cart.subTotal + shipping;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Confirm Checkout',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'You are placing an order for $totalItems item(s).',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 12),
+              _dialogPriceRow('Subtotal', cart.subTotal),
+              _dialogPriceRow('Shipping & Tax', shipping),
+              const Divider(height: 24),
+              _dialogPriceRow(
+                'Total Payable',
+                total,
+                isBold: true,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Please confirm to proceed with payment.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: themeColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              onPressed: () {
+                Navigator.pop(context); // Close dialog
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const AddressSelectScreen()));
+              },
+              child: const Text('Confirm Order'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _dialogPriceRow(
+      String label,
+      num value, {
+        bool isBold = false,
+      }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          Text(
+            '\$${value is int ? value : value.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontWeight: isBold ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
